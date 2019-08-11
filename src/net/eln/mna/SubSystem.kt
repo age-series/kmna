@@ -27,7 +27,6 @@ class SubSystem(root: RootSystem?, val dt: Double) {
     private var statesTab: Array<State?>? = null
 
     var root: RootSystem? = null
-        private set
 
     private var matrixValid = false
 

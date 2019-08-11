@@ -24,6 +24,8 @@ open class Inductor : Bipole, ISubSystemProcessI {
         this.name = name
     }
 
+    constructor(aPin: State?, bPin: State?) : super(aPin, bPin)
+
     constructor(name: String, aPin: State, bPin: State) : super(aPin, bPin) {
         this.name = name
     }

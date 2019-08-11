@@ -12,7 +12,7 @@ buildscript {
 apply plugin: 'kotlin'
 apply plugin: 'application'
 
-mainClassName = 'org.ja13.kmna.test.KmnaTesting'
+mainClassName = 'org.ja13.kmna.test.KmnaParseTester'
 
 defaultTasks 'run'
 
