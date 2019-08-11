@@ -40,3 +40,19 @@ graph subsystem0 {
 ...represents a circuit like this:
 
 ![resistor-circuit](img/resistor-circuit.png)
+
+## Node Types
+
+You can have the following node types:
+
+* null (not connected?)
+* State (a basic connection)
+
+## Component Types
+
+You can have the following component types (and they have properties as follows):
+
+* Resistor (takes `ohms` as a property)
+* Inductor (takes `henries` as a property)
+* Capacitor (takes `farads` as a property)
+* VoltageSource (takes `volts` as a property) (a basic connection point)
