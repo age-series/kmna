@@ -1,187 +1,87 @@
 package org.ja13.kmna.test
 
-import net.eln.mna.RootSystem
-import net.eln.mna.SubSystem
-import net.eln.mna.passive.*
-import net.eln.mna.state.State
+import net.eln.mna.passive.Capacitor
+import net.eln.mna.passive.ResistorSwitch
+
 
 class KmnaParseTester {
     companion object {
 
-        val dotNames = mapOf(
-            Pair("Resistor", Resistor::class),
-            Pair("Inductor", Inductor::class),
-            Pair("Capacitor", Capacitor::class),
-            Pair("VoltageSource", VoltageSource::class),
-            Pair("ResistorSwitch", ResistorSwitch::class)
-        )
-
         val example = """
             graph subsystem0 {
-                null [label=null]
-                0 [label=Node]
-                1 [label=Node]
-                2 [label=Node]
-                0 -- null [label=VoltageSource volts=10]
-                0 -- 1 [label=Resistor ohms=10]
-                1 -- 2 [label=Resistor ohms=10]
-                2 -- null [label=VoltageSource volts=0]
+                null [label=null];
+                0 [label=Node];
+                1 [label=VoltageState volts=8];
+                2 [label=Node];
+                0 -- null [label=VoltageSource volts=10];
+                0 -- 1 [label=Resistor ohms=10];
+                1 -- 2 [label=Resistor ohms=10];
+                2 -- null [label=VoltageSource volts=0];
             }
         """.trimIndent()
 
-        const val dt = 0.05
+        val example2 = """
+            ${'$'} 1 0.000005 10.20027730826997 50 5 43
+            r 176 80 384 80 0 10
+            s 384 80 448 80 0 1 false
+            w 176 80 176 352 0
+            c 384 352 176 352 0 0.000015 -3.012969337832106
+            l 384 80 384 352 0 1 0.04064595520192915
+            v 448 352 448 80 0 0 40 5 0 0 0.5
+            r 384 352 448 352 0 100
+            o 4 64 0 4099 20 0.05 0 2 4 3
+            o 3 64 0 4099 20 0.05 1 2 3 3
+            o 0 64 0 4099 0.625 0.05 2 2 0 3
+            38 3 0 0.000001 0.000101 Capacitance
+            38 4 0 0.01 1.01 Inductance
+            38 0 0 1 101 Resistance
+            h 1 4 3
+        """.trimIndent()
+
+        const val dt = 0.5
 
         @JvmStatic
         fun main(args: Array<String>) {
-            val pt = parseDot(example)
-            println("Number of systems: ${pt.subSystemCount}")
-            pt.systems.forEach {
+            println("=====\n" + example2 + "\n=====\n")
+            val dot = FalstadHandler.parseFalstad(example2)
+            println(dot)
+            val root = DotHandler.parseDot(dot)
+            println("Number of systems: ${root.subSystemCount}")
+            root.systems.forEach {
                 println("Subsystem: ${it}")
             }
 
-            pt.step()
-            pt.step()
-            pt.step()
+            val resistorSwitches = root.systems[0].component.filterIsInstance<ResistorSwitch>()
+            val capacitors = root.systems[0].component.filterIsInstance<Capacitor>()
 
-            pt.systems.forEach {
-                it.states.forEach {
-                    println("${it.id}: ${it.state}")
+            var runs = 0
+            val timesToRun = 10
+
+            while (timesToRun > runs) {
+
+                if (runs < 5) {
+                    resistorSwitches.forEach { it.setState(true) }
+                    resistorSwitches.forEach { println(it.r) }
+                } else {
+                    resistorSwitches.forEach { it.setState(false) }
+                    resistorSwitches.forEach { println(it.r) }
                 }
-            }
-        }
+                capacitors.forEach { println(it.getE()) }
 
-        fun parseFalstad(str: String) {
+                root.step()
+                runs++
 
-        }
-
-        fun parseDot(str: String): RootSystem {
-            val rootSystem = RootSystem(dt, 10)
-            val lines = str.split("\n")
-            val lineItr = lines.iterator()
-            while(lineItr.hasNext()) {
-                val sline = lineItr.next()
-                if ("graph" in sline) {
-                    val lsplit = sline.split(" ","\t")
-                    if (lsplit.size > 2) {
-                        val subsystemName = lsplit[1]
-                        println("parsing $subsystemName")
-                        val subSystem = SubSystem(null, dt)
-                        val componentList = mutableListOf<Component>()
-                        val nodeList = mutableMapOf<String, State?>()
-                        nodeList["null"] = null
-                        while (lineItr.hasNext()) {
-                            val line = lineItr.next()
-                            if (line.trim() == "}") {
-                                // this is the end
-                                for (node  in nodeList) {
-                                    val v = node.value
-                                    if (v != null)
-                                        subSystem.addState(v)
-                                }
-                                for (component in componentList)
-                                    subSystem.addComponent(component)
-                                subSystem.root = rootSystem
-                                rootSystem.systems.add(subSystem)
-                                println("finished parsing $subsystemName")
-                                break
-                            }
-                            val parts = line.replace("]","").trim().split("[")
-                            // this will make two parts - the first is the connections or name, the second is the properties
-                            if (parts.size != 2) {
-                                println("Error parsing line, no properties detected: \n$line")
-                                break
-                            }
-
-                            val propertiesText: String = parts[1]
-                            val properties = mutableMapOf<String, String>()
-                            propertiesText.split(" ").forEach {
-                                var a = it.split("=")
-                                a = a.map { it2 -> it2.trim() }
-                                if (a.size == 2)
-                                    properties[a[0]] = a[1]
-                            }
-
-                            if ("--" in parts[0]) {
-                                // component
-                                val component: Component?
-
-                                // === Handle the connections ===
-                                var connections = parts[0].split("--")
-                                connections = connections.map { it.trim() }
-                                if (connections.size < 2) {
-                                    println("Error parsing line, too few connections: \n$line")
-                                    break
-                                }
-                                var valid = true
-                                connections.forEach {
-                                    if (it !in nodeList) {
-                                        valid = false
-                                    }
-                                }
-                                if (!valid) {
-                                    println("Error parsing line, all connecting nodes must be defined before the components that use them: \n$line")
-                                    break
-                                }
-
-                                val aPin: State? = nodeList[connections[0]]
-                                val bPin: State? = nodeList[connections[1]]
-
-                                // === Handles the component itself ===
-                                when (properties["label"]) {
-                                    "Resistor" -> {
-                                        component = Resistor(aPin, bPin)
-                                        component.name = properties["name"]?: ""
-                                        component.r = properties["ohms"]?.toDouble()?: 1e12
-                                    }
-                                    "Inductor" -> {
-                                        component = Inductor(aPin, bPin)
-                                        component.name = properties["name"]?: ""
-                                        component.l = properties["henries"]?.toDouble()?: 0.0
-                                    }
-                                    "Capacitor" -> {
-                                        component = Capacitor(aPin, bPin)
-                                        component.name = properties["name"]?: ""
-                                        component.c = properties["farads"]?.toDouble()?: 0.0
-                                    }
-                                    "VoltageSource" -> {
-                                        component = VoltageSource(aPin, bPin)
-                                        component.name = properties["name"]?: ""
-                                        component.u = properties["volts"]?.toDouble()?: 0.0
-                                    }
-                                    else -> {
-                                        component = null
-                                    }
-                                }
-                                if (component != null) {
-                                    println("Adding component $component")
-                                    componentList.add(component)
-                                }
-                            }else{
-                                // node
-                                val name = parts[0].trim()
-                                val type: State?
-
-                                when(properties["label"]) {
-                                    "null" -> {
-                                        type = null
-                                    }
-                                    else -> {
-                                        type = State(properties["name"]?: "")
-                                        type.id = name.toInt()
-                                    }
-                                }
-                                if (type == null) {
-                                    println("Adding null node")
-                                }else {
-                                    println("Adding node $name, which is of type ${type::class.java.name}")
-                                }
-                                nodeList.putIfAbsent(name, type)
-                            }
-                        }
+                println("Time: $runs (time elapsed: ${runs * dt})")
+                root.systems.forEach {
+                    it.states.forEach {
+                        println("${it.id}: ${it.state}")
                     }
                 }
             }
-            return rootSystem
+
+            root.systems.forEach {
+                println("Subsystem: ${it}")
+            }
         }
     }
 }

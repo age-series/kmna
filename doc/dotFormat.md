@@ -27,9 +27,9 @@ This graph here:
 ```
 graph subsystem0 {
     null [label=null]
-    0 [label=Node]
-    1 [label=Node]
-    2 [label=Node]
+    0 [label=Nod3]
+    1 [label=Nod3]
+    2 [label=Nod3]
     0 -- null [label=VoltageSource volts=10]
     0 -- 1 [label=Resistor ohms=10]
     1 -- 2 [label=Resistor ohms=10]
@@ -46,7 +46,7 @@ graph subsystem0 {
 You can have the following node types:
 
 * null (not connected?)
-* State (a basic connection)
+* Nod3 (a basic connection) - uses a `3` instead of an `e`, becuase `Node` is a reserved word
 
 ## Component Types
 
