@@ -59,6 +59,8 @@ class FalstadHandler {
                 }
             }
 
+            wireCleanup(nodes, components)
+
             val output = mutableListOf<String>()
             nodes.distinct().forEach {output.add("$it [label=Nod3];" ) }
             output.addAll(components)
@@ -149,7 +151,10 @@ class FalstadHandler {
                     nodes.add(bPin)
                 }
                 "172" -> {
-                    // "var" "rail" ??
+                    // voltage source (one pin, uses Adjustable slider on right
+                    component = "$aPin -- null [label=VoltageSource volts=${parameters[2]}];"
+                    components.add(component)
+                    nodes.add(aPin)
                 }
                 "174" -> {
                     // "pot"
@@ -417,6 +422,27 @@ class FalstadHandler {
                 }
             }
             return null
+        }
+
+        fun getNodes(component: String): List<String> {
+            val parts = component.replace("]","").replace(";","").trim().split("[")
+            var connections = parts[0].split("--")
+            connections = connections.map { it.trim() }
+            return connections
+        }
+
+        fun wireCleanup(nodes: MutableList<String>, components: MutableList<String>) {
+            println("cleanup")
+            var count = 0
+            while (components.filter { "label=Wire" in it}.size > 0) {
+                val wire = components.filter{ "label=Wire" in it}.first()
+                val connections = getNodes(wire).filter { "Null" !in it }
+                println(connections)
+
+                println("err")
+                count++
+                if (count > 3) break
+            }
         }
     }
 }

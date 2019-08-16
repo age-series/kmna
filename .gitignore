@@ -7,7 +7,7 @@ bin
 /build
 eclipse
 /classes
-
+/out
 # IntelliJ
 .idea
 *.iml

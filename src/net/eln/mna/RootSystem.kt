@@ -191,7 +191,7 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
             val c = ic.next()
 
             if (!c.canBeReplacedByInterSystem()) {
-                MnaConst.logger.error("InterSystemError!")
+                MnaConst.logger.error("InterSystemError! (RootSystem)")
             } else {
                 MnaConst.logger.info("$c")
             }

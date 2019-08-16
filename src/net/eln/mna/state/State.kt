@@ -1,5 +1,6 @@
 package net.eln.mna.state
 
+import net.eln.common.IDotNode
 import net.eln.mna.RootSystem
 import net.eln.mna.SubSystem
 import net.eln.mna.passive.Component
@@ -8,7 +9,7 @@ import net.eln.mna.misc.MnaConst
 
 import java.util.ArrayList
 
-open class State {
+open class State: IDotNode {
 
     var id = -1
     var name = "State"
@@ -89,6 +90,14 @@ open class State {
     override fun toString(): String {
         return "(" + this.id + "," + this.javaClass.simpleName + "_" + name + ")"
     }
+
+    override fun dotNode(): String {
+        return "${this.id} [label=${this.javaClass.simpleName}_${name}_${this.id}]"
+    }
+
+    override fun dotNodeID(): String {
+        return "${this.id}"
+    }
 }
 
 open class VoltageState : State {
@@ -103,6 +112,10 @@ open class VoltageState : State {
                 MnaConst.logger.error("state.VoltageState setU(double state) - state was NaN!")
             this.state = state
         }
+
+    override fun dotNode(): String {
+        return "${this.id} [label=${this.javaClass.simpleName}_${name}_${this.id}]"
+    }
 }
 
 class CurrentState : State()

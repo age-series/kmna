@@ -1,9 +1,9 @@
 package net.eln.mna.passive
 
+import net.eln.common.IDotLine
 import net.eln.mna.state.State
 
-abstract class Bipole : Component {
-
+abstract class Bipole : Component, IDotLine {
     var aPin: State? = null
     var bPin: State? = null
 
@@ -59,5 +59,9 @@ abstract class Bipole : Component {
 
     override fun toString(): String {
         return "[" + aPin + " " + this.javaClass.simpleName + "_" + name + " " + bPin + "]"
+    }
+
+    override fun dotLine(): String {
+        return "${aPin?.dotNodeID()?: "null"} -- ${bPin?.dotNodeID()?: "null"} [label=${this.javaClass.simpleName}_${name.replace(" ","_")}]"
     }
 }

@@ -1,13 +1,13 @@
 package net.eln.mna
 
-import net.eln.mna.passive.Component
-import net.eln.mna.passive.Delay
-import net.eln.mna.passive.Resistor
-import net.eln.mna.passive.VoltageSource
+import net.eln.common.IDotGraph
+import net.eln.common.IDotLine
 import net.eln.mna.misc.IDestructor
 import net.eln.mna.misc.ISubSystemProcessFlush
 import net.eln.mna.misc.ISubSystemProcessI
 import net.eln.mna.misc.MnaConst
+import net.eln.mna.passive.*
+import net.eln.mna.state.CurrentState
 import net.eln.mna.state.State
 import net.eln.mna.state.VoltageState
 import org.apache.commons.math3.linear.MatrixUtils
@@ -18,7 +18,7 @@ import org.apache.commons.math3.linear.SingularValueDecomposition
 import java.util.ArrayList
 import java.util.LinkedList
 
-class SubSystem(root: RootSystem?, val dt: Double) {
+class SubSystem(root: RootSystem?, val dt: Double): IDotGraph {
     var component = ArrayList<Component>()
     var states: MutableList<State> = ArrayList()
     var breakDestructor = LinkedList<IDestructor>()
@@ -280,6 +280,18 @@ class SubSystem(root: RootSystem?, val dt: Double) {
             str += c.toString()
         }
         return str
+    }
+
+    override fun dotGraph(): String {
+        return "\ngraph subsystem0 {\n" +
+                this.states.filter { it !is CurrentState }.joinToString("\n  ", "  ") { it.dotNode() } + "\n" +
+                this.component.joinToString("\n  ", "  ") {
+                    if (it is IDotLine) {
+                        it.dotLine()
+                    } else {
+                        ""
+                    }
+                } + "\n}\n"
     }
 
     fun matrixSize(): Int {
