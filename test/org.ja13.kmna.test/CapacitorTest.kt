@@ -3,8 +3,8 @@ package org.ja13.kmna.test
 import net.eln.common.PrintValue
 import net.eln.mna.SubSystem
 import net.eln.mna.passive.*
-import net.eln.mna.state.CurrentState
-import net.eln.mna.state.VoltageState
+import net.eln.mna.state.CurrentNode
+import net.eln.mna.state.VoltageNode
 
 class CapacitorTest {
     companion object {
@@ -28,10 +28,10 @@ class CapacitorTest {
             val c1 = Capacitor("Capacitor")
             c1.c = 200 * 1e-6
 
-            val s0 = VoltageState()
-            val s1 = VoltageState()
-            val s2 = VoltageState()
-            val s3 = VoltageState()
+            val s0 = VoltageNode()
+            val s1 = VoltageNode()
+            val s2 = VoltageNode()
+            val s3 = VoltageNode()
 
             vsv.aPin = s0
             vsg.aPin = s2
@@ -62,7 +62,7 @@ class CapacitorTest {
             fun printStates() {
                 println((1..16).joinToString("") { "=" })
                 ss.states.forEach {
-                    val un = if (it is CurrentState) {
+                    val un = if (it is CurrentNode) {
                         "A"
                     } else {
                         "V"
@@ -98,7 +98,7 @@ class CapacitorTest {
             doStep(1)
             println(PrintValue.plotEnergy(c1.getE()))
 
-            println(ss.dotGraph())
+            println(ss.exportCircuit())
 
             println("c1: ${PrintValue.plotValue(c1.c, "F")}")
             println("r1: ${PrintValue.plotOhm(r1.r)}")

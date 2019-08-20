@@ -4,13 +4,13 @@ import net.eln.mna.RootSystem
 import net.eln.mna.SubSystem
 import net.eln.mna.misc.IAbstractor
 import net.eln.mna.misc.ISubSystemProcessFlush
-import net.eln.mna.state.State
+import net.eln.mna.state.Node
 import java.util.LinkedList
 
 class Line : Resistor(), ISubSystemProcessFlush, IAbstractor {
 
     var resistors = LinkedList<Resistor>() //from a to b
-    var states = LinkedList<State>() //from a to b
+    var states = LinkedList<Node>() //from a to b
 
     override var abstractorSubSystem: SubSystem
         get() = subSystem ?: throw Exception()
@@ -56,8 +56,8 @@ class Line : Resistor(), ISubSystemProcessFlush, IAbstractor {
 
         restoreResistorIntoCircuit()
 
-        root!!.addStates.addAll(states)
-        root.addComponents.addAll(resistors)
+        root!!.nodes.addAll(states)
+        root.components.addAll(resistors)
 
         root.removeProcess(this)
     }
@@ -89,7 +89,7 @@ class Line : Resistor(), ISubSystemProcessFlush, IAbstractor {
     }
 
     companion object {
-        fun newLine(root: RootSystem, resistors: LinkedList<Resistor>, states: LinkedList<State>) {
+        fun newLine(root: RootSystem, resistors: LinkedList<Resistor>, states: LinkedList<Node>) {
             if (resistors.isEmpty()) {
             } else if (resistors.size == 1) {
             } else {
@@ -102,9 +102,9 @@ class Line : Resistor(), ISubSystemProcessFlush, IAbstractor {
                 l.resistors = resistors
                 l.states = states
                 l.recalculateR()
-                root.addComponents.removeAll(resistors)
-                root.addStates.removeAll(states)
-                root.addComponents.add(l)
+                root.components.removeAll(resistors)
+                root.nodes.removeAll(states)
+                root.components.add(l)
                 l.connectTo(stateBefore, stateAfter)
                 l.removeResistorFromCircuit()
 

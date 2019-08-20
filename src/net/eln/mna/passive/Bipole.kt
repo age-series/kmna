@@ -1,13 +1,12 @@
 package net.eln.mna.passive
 
-import net.eln.common.IDotLine
-import net.eln.mna.state.State
+import net.eln.mna.state.Node
 
-abstract class Bipole : Component, IDotLine {
-    var aPin: State? = null
-    var bPin: State? = null
+abstract class Bipole : Component {
+    var aPin: Node? = null
+    var bPin: Node? = null
 
-    override fun getConnectedStates() = arrayOf<State?>(aPin, bPin)
+    override fun getConnectedStates() = arrayOf<Node?>(aPin, bPin)
 
     abstract fun getCurrent(): Double
 
@@ -23,17 +22,17 @@ abstract class Bipole : Component, IDotLine {
         this.name = name
     }
 
-    constructor(aPin: State?, bPin: State?) {
+    constructor(aPin: Node?, bPin: Node?) {
         this.name = "Bipole"
         connectTo(aPin, bPin)
     }
 
-    constructor(name:String, aPin: State?, bPin: State?) {
+    constructor(name:String, aPin: Node?, bPin: Node?) {
         this.name = name
         connectTo(aPin, bPin)
     }
 
-    fun connectTo(aPin: State?, bPin: State?): Bipole {
+    fun connectTo(aPin: Node?, bPin: Node?): Bipole {
         breakConnection()
 
         this.aPin = aPin
@@ -44,7 +43,7 @@ abstract class Bipole : Component, IDotLine {
         return this
     }
 
-    fun connectGhostTo(aPin: State, bPin: State): Bipole {
+    fun connectGhostTo(aPin: Node, bPin: Node): Bipole {
         breakConnection()
 
         this.aPin = aPin
@@ -61,7 +60,17 @@ abstract class Bipole : Component, IDotLine {
         return "[" + aPin + " " + this.javaClass.simpleName + "_" + name + " " + bPin + "]"
     }
 
-    override fun dotLine(): String {
-        return "${aPin?.dotNodeID()?: "null"} -- ${bPin?.dotNodeID()?: "null"} [label=${this.javaClass.simpleName}_${name.replace(" ","_")}]"
+    override fun exportProperties(): Pair<Map<String, String>, List<Node?>> {
+        val prop = super.exportProperties().first
+        val pins = listOf(aPin, bPin)
+        return Pair(prop, pins)
+    }
+
+    override fun importProperties(data: Map<String, String>, pins: List<Node?>) {
+        super.importProperties(data, pins)
+        if (pins.size == 2) {
+            aPin = pins[0]
+            bPin = pins[1]
+        }
     }
 }

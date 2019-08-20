@@ -5,6 +5,9 @@ import net.eln.mna.misc.ISubSystemProcessI
 
 class Delay : Bipole(), ISubSystemProcessI {
 
+    override val typeString: String
+        get() = "_D"
+
     internal var impedance: Double = 0.0
     internal var conductance: Double = 0.0
 

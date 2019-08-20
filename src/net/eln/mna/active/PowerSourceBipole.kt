@@ -4,9 +4,9 @@ import net.eln.mna.passive.VoltageSource
 import net.eln.mna.misc.IRootSystemPreStepProcess
 import net.eln.mna.misc.MnaConst
 import net.eln.mna.misc.Th
-import net.eln.mna.state.State
+import net.eln.mna.state.Node
 
-class PowerSourceBipole(private val aPin: State, private val bPin: State, private val aSrc: VoltageSource, private val bSrc: VoltageSource) : IRootSystemPreStepProcess {
+class PowerSourceBipole(private val aPin: Node, private val bPin: Node, private val aSrc: VoltageSource, private val bSrc: VoltageSource) : IRootSystemPreStepProcess {
 
     var p: Double = 0.toDouble()
     internal var Umax: Double = 0.toDouble()

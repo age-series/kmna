@@ -5,11 +5,11 @@ import net.eln.thermal.ThermalLoad
 import net.eln.common.IProcess
 import net.eln.mna.misc.MnaConst
 import net.eln.mna.passive.VoltageSource
-import net.eln.mna.state.VoltageState
+import net.eln.mna.state.VoltageNode
 
 open class BatteryProcess(
-    val positiveLoad: VoltageState,
-    val negativeLoad: VoltageState,
+    val positiveLoad: VoltageNode,
+    val negativeLoad: VoltageNode,
     var voltageFunction: FunctionTable,
     var iMax: Double,
     var batteryAging: Boolean,
@@ -69,10 +69,10 @@ open class BatteryProcess(
 
     fun getU(): Double = computeVoltage()
 
-    override fun process(time: Double) {
+    override fun process(dt: Double) {
         val lastQ = Q
         var wasteQ = 0.0
-        Q = Math.max(Q - voltageSource.getCurrent() * time / QNominal, 0.0)
+        Q = Math.max(Q - voltageSource.getCurrent() * dt / QNominal, 0.0)
         if (Q > lastQ && !isRechargable) {
             MnaConst.logger.warn("Battery is recharging when it shouldn't!")
             wasteQ = Q - lastQ
@@ -90,7 +90,7 @@ open class BatterySlowProcess(val batteryProcess: BatteryProcess): IProcess {
     var lifeNominalCurrent: Double = 0.0
     var lifeNominalLost: Double = 0.0
 
-    override fun process(time: Double) {
+    override fun process(dt: Double) {
         val U = batteryProcess.computeVoltage()
         if (U > batteryProcess.uMax()) {
             destroy()
@@ -98,7 +98,7 @@ open class BatterySlowProcess(val batteryProcess: BatteryProcess): IProcess {
         }
         if (batteryProcess.batteryAging) {
             val normalizedI = Math.abs(batteryProcess.voltageSource.getCurrent()) / lifeNominalCurrent
-            batteryProcess.life -= normalizedI * normalizedI * lifeNominalLost * time
+            batteryProcess.life -= normalizedI * normalizedI * lifeNominalLost * dt
             if (batteryProcess.life < 0.1) batteryProcess.life = 0.1
         }
     }

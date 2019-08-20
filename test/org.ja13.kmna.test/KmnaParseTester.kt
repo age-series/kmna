@@ -1,8 +1,6 @@
 package org.ja13.kmna.test
 
-import net.eln.mna.passive.Capacitor
-import net.eln.mna.passive.ResistorSwitch
-import net.eln.mna.state.CurrentState
+import net.eln.mna.state.CurrentNode
 
 
 class KmnaParseTester {
@@ -58,7 +56,7 @@ class KmnaParseTester {
                 root.systems.forEach {
                     it.states.forEach {
                         val un: String
-                        if(it is CurrentState) {
+                        if(it is CurrentNode) {
                             un = "A"
                         } else {
                             un = "V"

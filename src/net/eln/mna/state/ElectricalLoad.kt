@@ -5,7 +5,10 @@ import net.eln.mna.passive.Bipole
 import net.eln.mna.passive.Line
 import net.eln.mna.misc.MnaConst
 
-open class ElectricalLoad : VoltageStateLineReady() {
+open class ElectricalLoad : VoltageNodeLineReady() {
+
+    override val typeString: String
+        get() = "EL"
 
     var rs = MnaConst.highImpedance
         set(Rs) {

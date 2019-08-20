@@ -1,7 +1,6 @@
 package org.ja13.kmna.test
 
 import net.eln.mna.passive.*
-import net.eln.mna.state.State
 
 class FalstadHandler {
     companion object {

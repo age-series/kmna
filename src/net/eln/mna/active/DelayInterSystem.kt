@@ -4,12 +4,15 @@ import net.eln.mna.SubSystem
 import net.eln.mna.passive.Component
 import net.eln.mna.misc.IRootSystemPreStepProcess
 import net.eln.mna.misc.ISubSystemProcessI
-import net.eln.mna.state.State
+import net.eln.mna.state.Node
 
 class DelayInterSystem : Component(), ISubSystemProcessI {
 
+    override val typeString: String
+        get() = "_DIS"
+
     private var other: DelayInterSystem? = null
-    var pin: State? = null
+    var pin: Node? = null
 
     internal var impedance: Double = 0.toDouble()
     internal var conductance: Double = 0.toDouble()
@@ -23,11 +26,11 @@ class DelayInterSystem : Component(), ISubSystemProcessI {
 
     internal var iTarget: Double = 0.toDouble()
 
-    override fun getConnectedStates(): Array<State?> {
-        return arrayOf<State?>()
+    override fun getConnectedStates(): Array<Node?> {
+        return arrayOf<Node?>()
     }
 
-    operator fun set(pin: State, other: DelayInterSystem) {
+    operator fun set(pin: Node, other: DelayInterSystem) {
         this.other = other
         this.pin = pin
     }

@@ -1,30 +1,28 @@
 package net.eln.mna
 
-import net.eln.common.IDotGraph
-import net.eln.common.IDotLine
+import net.eln.common.ISerializedCircuit
 import net.eln.mna.misc.IDestructor
 import net.eln.mna.misc.ISubSystemProcessFlush
 import net.eln.mna.misc.ISubSystemProcessI
 import net.eln.mna.misc.MnaConst
-import net.eln.mna.passive.*
-import net.eln.mna.state.CurrentState
-import net.eln.mna.state.State
-import net.eln.mna.state.VoltageState
+import net.eln.mna.passive.Component
+import net.eln.mna.passive.Resistor
+import net.eln.mna.state.CurrentNode
+import net.eln.mna.state.Node
+import net.eln.mna.state.VoltageNode
 import org.apache.commons.math3.linear.MatrixUtils
 import org.apache.commons.math3.linear.QRDecomposition
 import org.apache.commons.math3.linear.RealMatrix
 import org.apache.commons.math3.linear.SingularValueDecomposition
+import java.util.*
 
-import java.util.ArrayList
-import java.util.LinkedList
-
-class SubSystem(root: RootSystem?, val dt: Double): IDotGraph {
+class SubSystem(root: RootSystem?, val dt: Double): ISerializedCircuit {
     var component = ArrayList<Component>()
-    var states: MutableList<State> = ArrayList()
+    var states: MutableList<Node> = ArrayList()
     var breakDestructor = LinkedList<IDestructor>()
     var interSystemConnectivity = ArrayList<SubSystem>()
     private var processI = ArrayList<ISubSystemProcessI>()
-    private var statesTab: Array<State?>? = null
+    private var statesTab: Array<Node?>? = null
 
     var root: RootSystem? = null
 
@@ -42,42 +40,41 @@ class SubSystem(root: RootSystem?, val dt: Double): IDotGraph {
 
     private var processF = ArrayList<ISubSystemProcessFlush>()
 
-    //private val matrixProfiler = Profiler()
-
     init {
         this.root = root
     }
 
-    fun invalidate() {
-        matrixValid = false
+
+
+    fun contains(state: Node): Boolean {
+        return states.contains(state)
     }
 
-    fun addComponent(c: Component) {
-        component.add(c)
-        c.addedTo(this)
-        invalidate()
+    fun getXSafe(bPin: Node?): Double {
+        return bPin?.state ?: 0.0
     }
 
-    fun addState(s: State) {
+    fun addState(s: Node) {
         states.add(s)
         s.addedTo(this)
         invalidate()
     }
 
-    fun removeComponent(c: Component) {
-        component.remove(c)
-        c.quitSubSystem()
-        invalidate()
+    fun addState(i: Iterable<Node>) {
+        for (s in i) {
+            addState(s)
+        }
     }
 
-    fun removeState(s: State) {
+    fun removeState(s: Node) {
         states.remove(s)
         s.quitSubSystem()
         invalidate()
     }
 
-    fun removeProcess(p: ISubSystemProcessI) {
-        processI.remove(p)
+    fun addComponent(c: Component) {
+        component.add(c)
+        c.addedTo(this)
         invalidate()
     }
 
@@ -87,21 +84,133 @@ class SubSystem(root: RootSystem?, val dt: Double): IDotGraph {
         }
     }
 
-    fun addState(i: Iterable<State>) {
-        for (s in i) {
-            addState(s)
-        }
+    fun removeComponent(c: Component) {
+        component.remove(c)
+        c.quitSubSystem()
+        invalidate()
     }
 
     fun addProcess(p: ISubSystemProcessI) {
         processI.add(p)
     }
 
+    fun removeProcess(p: ISubSystemProcessI) {
+        processI.remove(p)
+        invalidate()
+    }
+
+    fun addProcess(p: ISubSystemProcessFlush) {
+        processF.add(p)
+    }
+
+    fun removeProcess(p: ISubSystemProcessFlush) {
+        processF.remove(p)
+    }
+
+    fun addToA(a: Node?, b: Node?, v: Double) {
+        if (a == null || b == null)
+            return
+        this.a?.addToEntry(a.id, b.id, v)
+    }
+
+    fun addToI(s: Node?, v: Double) {
+        if (s == null) return
+        iData?.set(s.id, v)
+    }
+
+
+
+    /**
+     * step
+     *
+     * Only used for testing SubSystem or when you only have one component matrix.
+     * RootSystem calls these functions individually.
+     */
+    fun step() {
+        stepCalc()
+        stepFlush()
+    }
+
+    /**
+     * stepCalc
+     *
+     * Generates a matrix, ???, ???, ???
+     */
+    fun stepCalc() {
+        if (!matrixValid) {
+            generateMatrix()
+        }
+        if (!singularMatrix) {
+            for (y in 0 until stateCount) {
+                iData?.set(y, 0.0)
+            }
+            for (p in processI) {
+                p.simProcessI(this)
+            }
+            for (idx2 in 0 until stateCount) {
+                var stack = 0.0
+                for (idx in 0 until stateCount) {
+                    stack += aInverseData!![idx2][idx] * iData?.get(idx)!!
+                }
+                xTempData!![idx2] = stack
+            }
+        }
+    }
+
+    /**
+     * solve
+     *
+     * Very similar to stepCalc, except it returns a single requested Node state.
+     */
+    fun solve(pin: Node): Double {
+        if (!matrixValid) {
+            generateMatrix()
+        }
+
+        if (!singularMatrix) {
+            for (y in 0 until stateCount) {
+                iData?.set(y, 0.0)
+            }
+            for (p in processI) {
+                p.simProcessI(this)
+            }
+
+            val idx2 = pin.id
+            var stack = 0.0
+            for (idx in 0 until stateCount) {
+                stack += aInverseData!![idx2][idx] * iData!![idx]
+            }
+            return stack
+        }
+        return 0.0
+    }
+
+    /**
+     * stepFlush
+     *
+     * ???, then runs flush processes.
+     */
+    fun stepFlush() {
+        if (!singularMatrix) {
+            for (idx in 0 until stateCount) {
+                statesTab?.get(idx)?.state = xTempData!![idx]
+            }
+        } else {
+            for (idx in 0 until stateCount) {
+                statesTab?.get(idx)?.state = 0.0
+            }
+        }
+
+        for (p in processF) {
+            p.simProcessFlush()
+        }
+    }
+
+    /**
+     * generateMatrix
+     */
     private fun generateMatrix() {
         stateCount = states.size
-
-        //matrixProfiler.reset()
-        //matrixProfiler.add("Inversse with $stateCount state")
 
         a = MatrixUtils.createRealMatrix(stateCount, stateCount)
 
@@ -131,8 +240,7 @@ class SubSystem(root: RootSystem?, val dt: Double): IDotGraph {
         }
 
         try {
-            val aInverse = QRDecomposition(a).solver.inverse
-            aInverseData = aInverse.data
+            aInverseData = QRDecomposition(a).solver.inverse.data
             singularMatrix = false
         } catch (e: org.apache.commons.math3.linear.SingularMatrixException) {
             singularMatrix = true
@@ -144,97 +252,12 @@ class SubSystem(root: RootSystem?, val dt: Double): IDotGraph {
             }
         }
 
+        // TODO: Does this line do anything at all?
         statesTab = arrayOfNulls(stateCount)
         statesTab = states.toTypedArray()
 
+        // TODO: But is it if there is a singular matrix?
         matrixValid = true
-
-        //matrixProfiler.stop()
-        //DP.println(DPType.MNA, matrixProfiler.toString())
-    }
-
-    fun addToA(a: State?, b: State?, v: Double) {
-        if (a == null || b == null)
-            return
-        this.a?.addToEntry(a.id, b.id, v)
-    }
-
-    fun addToI(s: State?, v: Double) {
-        if (s == null) return
-        iData?.set(s.id, v)
-    }
-
-    fun step() {
-        stepCalc()
-        stepFlush()
-    }
-
-    fun stepCalc() {
-        if (!matrixValid) {
-            generateMatrix()
-        }
-        if (!singularMatrix) {
-            for (y in 0 until stateCount) {
-                iData?.set(y, 0.0)
-            }
-            for (p in processI) {
-                p.simProcessI(this)
-            }
-            for (idx2 in 0 until stateCount) {
-                var stack = 0.0
-                for (idx in 0 until stateCount) {
-                    stack += aInverseData!![idx2][idx] * iData?.get(idx)!!
-                }
-                xTempData!![idx2] = stack
-            }
-        }
-    }
-
-    fun solve(pin: State): Double {
-        if (!matrixValid) {
-            generateMatrix()
-        }
-
-        if (!singularMatrix) {
-            for (y in 0 until stateCount) {
-                iData?.set(y, 0.0)
-            }
-            for (p in processI) {
-                p.simProcessI(this)
-            }
-
-            val idx2 = pin.id
-            var stack = 0.0
-            for (idx in 0 until stateCount) {
-                stack += aInverseData!![idx2][idx] * iData!![idx]
-            }
-            return stack
-        }
-        return 0.0
-    }
-
-    fun stepFlush() {
-        if (!singularMatrix) {
-            for (idx in 0 until stateCount) {
-                statesTab?.get(idx)?.state = xTempData!![idx]
-            }
-        } else {
-            for (idx in 0 until stateCount) {
-                statesTab?.get(idx)?.state = 0.0
-            }
-        }
-
-        for (p in processF) {
-            p.simProcessFlush()
-        }
-    }
-
-    fun contains(state: State): Boolean {
-        return states.contains(state)
-    }
-
-    fun getXSafe(bPin: State?): Double {
-        return bPin?.state ?: 0.0
     }
 
     fun breakSystem(): Boolean {
@@ -266,12 +289,8 @@ class SubSystem(root: RootSystem?, val dt: Double): IDotGraph {
         return true
     }
 
-    fun addProcess(p: ISubSystemProcessFlush) {
-        processF.add(p)
-    }
-
-    fun removeProcess(p: ISubSystemProcessFlush) {
-        processF.remove(p)
+    fun invalidate() {
+        matrixValid = false
     }
 
     override fun toString(): String {
@@ -282,76 +301,20 @@ class SubSystem(root: RootSystem?, val dt: Double): IDotGraph {
         return str
     }
 
-    override fun dotGraph(): String {
-        return "\ngraph subsystem0 {\n" +
-                this.states.filter { it !is CurrentState }.joinToString("\n  ", "  ") { it.dotNode() } + "\n" +
-                this.component.joinToString("\n  ", "  ") {
-                    if (it is IDotLine) {
-                        it.dotLine()
-                    } else {
-                        ""
-                    }
-                } + "\n}\n"
+    override fun exportCircuit(): String {
+        val nodeSerializedProperties = states.map {Pair(it, it.exportProperties())}
+        val componentSerializedProperties = component.map {Pair(it, it.exportProperties())}
+        var exportString = ""
+        exportString += nodeSerializedProperties.map {
+            "${it.first.typeString} ${it.first.id} ${it.second.map {it.toString()}.joinToString(" ")}"
+        }.joinToString("\n", "","\n")
+        exportString += componentSerializedProperties.map {
+            "${it.first.typeString} ${it.second.second.map { it?.id.toString() }.joinToString(" ")} ${it.second.first.map { it.toString()}.joinToString (" ")}"
+        }.joinToString("\n",  "","\n")
+        return exportString
     }
 
-    fun matrixSize(): Int {
-        return component.size
-    }
-
-    companion object {
-
-        @JvmStatic
-        fun main(args: Array<String>) {
-            val s = SubSystem(null, 0.1)
-            val n1 = VoltageState()
-            val n2 = VoltageState()
-            val n3 = VoltageState()
-            val u1 = VoltageSource("")
-            val r1 = Resistor()
-            r1.r = 10.0
-            r1.connectTo(n1, n2)
-            val r2 = Resistor()
-            r2.r = 10.0
-            r2.connectTo(n3, null)
-            val d1 = Delay()
-            d1.set(1.0)
-            d1.connectTo(n2, n3)
-
-            s.addState(n1)
-            s.addState(n2)
-            s.addState(n3)
-
-            u1.u = 1.0
-            u1.connectTo(n1, null)
-            s.addComponent(u1)
-
-            s.addComponent(r1)
-            s.addComponent(d1)
-            s.addComponent(r2)
-
-            //val p = Profiler()
-
-            //p.add("run")
-
-            // as it turns out, the first step where we build the matrix is what takes the longest time.
-            s.step()
-
-            //p.add("first")
-
-            for (idx in 0..49) {
-                s.step()
-            }
-            r1.r = 20.0
-            for (idx in 0..49) {
-                s.step()
-            }
-            //p.stop()
-
-            //DP.println(DPType.CONSOLE, "$p ${p.list}")
-            println("$s")
-
-            //DP.println(DPType.CONSOLE, "first step finished in ${(p.list[1].nano - p.list.first.nano) / 1000}ps")
-            //DP.println(DPType.CONSOLE, "other steps finished in ${(p.list.last.nano - p.list[1].nano) / 100 / 1000}ps")
-        }
+    override fun importCircuit(data: String) {
+        // TODO: Errrrrr
     }
 }

@@ -2,10 +2,13 @@ package net.eln.mna.passive
 
 import net.eln.mna.SubSystem
 import net.eln.mna.misc.ISubSystemProcessI
-import net.eln.mna.state.CurrentState
-import net.eln.mna.state.State
+import net.eln.mna.state.CurrentNode
+import net.eln.mna.state.Node
 
 open class Inductor : Bipole, ISubSystemProcessI {
+
+    override val typeString: String
+        get() = "L"
 
     var l = 0.0
         set(l) {
@@ -14,7 +17,7 @@ open class Inductor : Bipole, ISubSystemProcessI {
         }
     internal var ldt: Double = 0.toDouble()
 
-    val currentState = CurrentState()
+    val currentState = CurrentNode()
 
     override fun getCurrent() = currentState.state
 
@@ -24,9 +27,9 @@ open class Inductor : Bipole, ISubSystemProcessI {
         this.name = name
     }
 
-    constructor(aPin: State?, bPin: State?) : super(aPin, bPin)
+    constructor(aPin: Node?, bPin: Node?) : super(aPin, bPin)
 
-    constructor(name: String, aPin: State, bPin: State) : super(aPin, bPin) {
+    constructor(name: String, aPin: Node, bPin: Node) : super(aPin, bPin) {
         this.name = name
     }
 
@@ -58,5 +61,17 @@ open class Inductor : Bipole, ISubSystemProcessI {
 
     fun resetStates() {
         currentState.state = 0.0
+    }
+
+    override fun exportProperties(): Pair<Map<String, String>, List<Node?>> {
+        val s = super.exportProperties()
+        val prop = s.first.toMutableMap()
+        prop["L"] = l.toString()
+        return Pair(prop, s.second)
+    }
+
+    override fun importProperties(data: Map<String, String>, pins: List<Node?>) {
+        super.importProperties(data, pins)
+        l = data["L"]?.toDouble()?: l
     }
 }

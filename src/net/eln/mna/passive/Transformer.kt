@@ -1,14 +1,16 @@
 package net.eln.mna.passive
 
 import net.eln.mna.SubSystem
-import net.eln.mna.passive.Bipole
-import net.eln.mna.state.CurrentState
-import net.eln.mna.state.State
+import net.eln.mna.state.CurrentNode
+import net.eln.mna.state.Node
 
 class Transformer : Bipole {
 
-    var aCurrentState = CurrentState()
-    var bCurrentState = CurrentState()
+    override val typeString: String
+        get() = "T"
+
+    var aCurrentState = CurrentNode()
+    var bCurrentState = CurrentNode()
 
     var ratio = 1.0
 
@@ -16,7 +18,7 @@ class Transformer : Bipole {
 
     constructor() {}
 
-    constructor(aPin: State, bPin: State) : super(aPin, bPin) {}
+    constructor(aPin: Node, bPin: Node) : super(aPin, bPin) {}
 
     override fun quitSubSystem() {
         getSubSystem()!!.states.remove(aCurrentState)
@@ -43,5 +45,17 @@ class Transformer : Bipole {
         s.addToA(aCurrentState, bCurrentState, ratio)
         s.addToA(bCurrentState, aCurrentState, 1.0)
         s.addToA(bCurrentState, bCurrentState, ratio)
+    }
+
+    override fun exportProperties(): Pair<Map<String, String>, List<Node?>> {
+        val s = super.exportProperties()
+        val prop = s.first.toMutableMap()
+        prop["RATIO"] = ratio.toString()
+        return Pair(prop, s.second)
+    }
+
+    override fun importProperties(data: Map<String, String>, pins: List<Node?>) {
+        super.importProperties(data, pins)
+        ratio = data["RATIO"]?.toDouble()?: ratio
     }
 }

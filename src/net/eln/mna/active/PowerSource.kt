@@ -4,8 +4,8 @@ import net.eln.mna.SubSystem
 import net.eln.mna.passive.VoltageSource
 import net.eln.mna.misc.IRootSystemPreStepProcess
 import net.eln.mna.misc.Th
-import net.eln.mna.state.State
-open class PowerSource(name: String, aPin: State) : VoltageSource(name, aPin, null), IRootSystemPreStepProcess {
+import net.eln.mna.state.Node
+open class PowerSource(name: String, aPin: Node) : VoltageSource(name, aPin, null), IRootSystemPreStepProcess {
 
     var p: Double = 0.0
     var Umax: Double = 0.0

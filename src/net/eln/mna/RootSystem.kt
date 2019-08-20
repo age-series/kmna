@@ -6,10 +6,8 @@ import net.eln.mna.misc.ISubSystemProcessFlush
 import net.eln.mna.active.InterSystemAbstraction
 import net.eln.mna.misc.MnaConst
 import net.eln.mna.passive.*
-import net.eln.mna.state.State
-import net.eln.mna.state.VoltageState
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
+import net.eln.mna.state.Node
+import net.eln.mna.state.VoltageNode
 
 import java.util.*
 
@@ -17,8 +15,8 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
 
     var systems = ArrayList<SubSystem>()
 
-    var addComponents: MutableSet<Component> = HashSet()
-    var addStates = HashSet<State>()
+    var components: MutableSet<Component> = HashSet()
+    var nodes = HashSet<Node>()
 
     private var processF = ArrayList<ISubSystemProcessFlush>()
 
@@ -28,7 +26,7 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
         get() = systems.size
 
     fun addComponent(c: Component) {
-        addComponents.add(c)
+        components.add(c)
         c.onAddToRootSystem()
 
         for (s in c.getConnectedStates()) {
@@ -45,32 +43,61 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
             breakSystems(system)
         }
 
-        addComponents.remove(c)
+        components.remove(c)
         c.onRemovefromRootSystem()
     }
 
-    fun addState(s: State) {
+    fun addState(s: Node) {
         for (c in s.getConnectedComponentsNotAbstracted().clone() as ArrayList<*>) {
             if (c is Component) {
                 if (c.getSubSystem() != null)
                     breakSystems(c.getSubSystem()!!)
             }
         }
-        addStates.add(s)
+        nodes.add(s)
     }
 
-    fun removeState(s: State) {
+    fun removeState(s: Node) {
         val system = s.subSystem
         if (system != null) {
             breakSystems(system)
         }
-        addStates.remove(s)
+        nodes.remove(s)
     }
 
-    fun generate() {
-        if (addComponents.isNotEmpty() || addStates.isNotEmpty()) {
-            //val p = profiler()
-            //p.add("*** Generate ***")
+    fun addProcess(p: ISubSystemProcessFlush) {
+        processF.add(p)
+    }
+
+    fun removeProcess(p: ISubSystemProcessFlush) {
+        processF.remove(p)
+    }
+
+    fun addProcess(p: IRootSystemPreStepProcess) {
+        processPre.add(p)
+    }
+
+    fun removeProcess(p: IRootSystemPreStepProcess) {
+        processPre.remove(p)
+    }
+
+    fun isRegistred(load: ElectricalLoad): Boolean {
+        return load.subSystem != null || nodes.contains(load)
+    }
+
+
+    fun step() {
+        generate()
+        for (idx in 0 until interSystemOverSampling)
+            processPre.forEach { it.rootSystemPreStepProcess() }
+        systems.forEach {it.stepCalc()}
+        systems.forEach { it.stepFlush() }
+        processF.forEach { it.simProcessFlush() }
+    }
+
+    // TODO: This function is terrible and undocumented.
+    private fun generate() {
+        if (components.isNotEmpty() || nodes.isNotEmpty()) {
             generateLine()
             generateSystems()
             generateInterSystems()
@@ -78,34 +105,19 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
             var stateCnt = 0
             var componentCnt = 0
 
-            for (s in systems) {
-                stateCnt += s.states.size
-                componentCnt += s.component.size
+            systems.forEach {
+                stateCnt += it.states.size
+                componentCnt += it.component.size
             }
-            //p.stop()
-            //DP.println(DPType.MNA,"Ran generate in " + p.time + " μs. States: $stateCnt Components: $componentCnt")
+
             MnaConst.logger.info("Ran generate")
         }
     }
 
-    private fun isValidForLine(s: State): Boolean {
-        if (!s.canBeSimplifiedByLine()) return false
-        val sc = s.getConnectedComponentsNotAbstracted()
-        if (sc.size != 2) return false
-        for (c in sc) {
-            if (c !is Resistor) return false
-        }
-
-        return true
-    }
-
+    // TODO: This function is terrible and undocumented.
     private fun generateLine() {
-        val stateScope = HashSet<State>()
-        for (s in addStates) {
-            if (isValidForLine(s)) {
-                stateScope.add(s)
-            }
-        }
+        val stateScope = HashSet<Node>()
+        nodes.filter{isValidForLine(it)}.forEach {stateScope.add(it)}
 
         while (stateScope.isNotEmpty()) {
             val sRoot = stateScope.iterator().next()
@@ -119,7 +131,7 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
                         break
                     }
                 }
-                var sNext: State? = null
+                var sNext: Node? = null
 
                 if (sPtr !== rPtr.aPin)
                     sNext = rPtr.aPin
@@ -130,7 +142,7 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
                 sPtr = sNext
             }
 
-            val lineStates = LinkedList<State>()
+            val lineStates = LinkedList<Node>()
             val lineResistors = LinkedList<Resistor>()
 
             lineResistors.add(rPtr)
@@ -145,7 +157,7 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
                 }
                 lineResistors.add(rPtr)
 
-                var sNext: State? = null
+                var sNext: Node? = null
 
                 if (sPtr !== rPtr.aPin)
                     sNext = rPtr.aPin
@@ -165,28 +177,19 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
         }
     }
 
+    // TODO: This function is terrible and undocumented.
     private fun generateSystems() {
-        val firstState = LinkedList<State>()
-        for (s in addStates) {
-            if (s.mustBeFarFromInterSystem()) {
-                firstState.add(s)
-            }
-        }
-
-        for (s in firstState) {
-            if (s.subSystem == null) {
-                buildSubSystem(s)
-            }
-        }
-
-        while (addStates.isNotEmpty()) {
-            val root = addStates.iterator().next()
-            buildSubSystem(root)
+        val firstState = LinkedList<Node>()
+        nodes.filter{it.mustBeFarFromInterSystem()}.forEach {firstState.add(it)}
+        firstState.filter{it.subSystem == null}.forEach{buildSubSystem(it)}
+        while (nodes.isNotEmpty()) {
+            buildSubSystem(nodes.iterator().next())
         }
     }
 
+    // TODO: This function is terrible and undocumented.
     private fun generateInterSystems() {
-        val ic = addComponents.iterator()
+        val ic = components.iterator()
         while (ic.hasNext()) {
             val c = ic.next()
 
@@ -207,58 +210,17 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
         }
     }
 
-    fun step() {
-        //val profiler = Profiler()
-        //profiler.add("Generate")
-        generate()
-        //profiler.add("interSystem")
-        for (idx in 0 until interSystemOverSampling) {
-            for (p in processPre) {
-                p.rootSystemPreStepProcess()
-            }
-        }
-
-        /*	for (SubSystem s : systems) {
-			for (State state : s.states) {
-				Utils.print(state.state + " ");
-			}
-		}
-		Utils.println("");*/
-
-        //profiler.add("stepCalc")
-        for (s in systems) {
-            s.stepCalc()
-        }
-        //profiler.add("stepFlush")
-        for (s in systems) {
-            s.stepFlush()
-        }
-        //profiler.add("simProcessFlush")
-        for (p in processF) {
-            p.simProcessFlush()
-        }
-
-        /*	for (SubSystem s : systems) {
-			for (State state : s.states) {
-				Utils.print(state.state + " ");
-			}
-		}
-		Utils.println("");*/
-
-        //profiler.stop()
-        //Utils.println(profiler);
-    }
-
-    private fun buildSubSystem(root: State) {
+    // TODO: This function is terrible and undocumented.
+    private fun buildSubSystem(root: Node) {
         val componentSet = HashSet<Component>()
-        val stateSet = HashSet<State>()
+        val stateSet = HashSet<Node>()
 
-        val roots = LinkedList<State>()
+        val roots = LinkedList<Node>()
         roots.push(root)
         buildSubSystem(roots, componentSet, stateSet)
 
-        addComponents.removeAll(componentSet)
-        addStates.removeAll(stateSet)
+        components.removeAll(componentSet)
+        nodes.removeAll(stateSet)
 
         val subSystem = SubSystem(this, dt)
         MnaConst.logger.debug(stateSet.toString())
@@ -269,7 +231,8 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
         systems.add(subSystem)
     }
 
-    private fun buildSubSystem(roots: LinkedList<State>, componentSet: MutableSet<Component>, stateSet: MutableSet<State>) {
+    // TODO: This function is terrible and undocumented.
+    private fun buildSubSystem(roots: LinkedList<Node>, componentSet: MutableSet<Component>, stateSet: MutableSet<Node>) {
         val privateSystem = roots.first.isPrivateSubSystem
 
         while (!roots.isEmpty()) {
@@ -307,6 +270,7 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
         }
     }
 
+    // TODO: UHHHHH wat are you actually doing?
     private fun breakSystems(sub: SubSystem) {
         if (sub.breakSystem()) {
             for (s in sub.interSystemConnectivity) {
@@ -315,36 +279,28 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
         }
     }
 
-    fun addProcess(p: ISubSystemProcessFlush) {
-        processF.add(p)
-    }
+    private fun isValidForLine(s: Node): Boolean {
+        if (!s.canBeSimplifiedByLine()) return false
+        val sc = s.getConnectedComponentsNotAbstracted()
+        if (sc.size != 2) return false
+        for (c in sc) {
+            if (c !is Resistor) return false
+        }
 
-    fun removeProcess(p: ISubSystemProcessFlush) {
-        processF.remove(p)
-    }
-
-    fun addProcess(p: IRootSystemPreStepProcess) {
-        processPre.add(p)
-    }
-
-    fun removeProcess(p: IRootSystemPreStepProcess) {
-        processPre.remove(p)
-    }
-
-    fun isRegistred(load: ElectricalLoad): Boolean {
-        return load.subSystem != null || addStates.contains(load)
+        return true
     }
 
     companion object {
 
         private const val maxSubSystemSize = 100
 
+        // TODO: Move test elsewhere in the testing suite, doesn't need to be here.
         @JvmStatic
         fun main(args: Array<String>) {
-            val s = RootSystem(0.1, 1);
+            val s = RootSystem(0.1, 1)
 
-            val n1= VoltageState("n1")
-            val n2= VoltageState("n2")
+            val n1= VoltageNode("n1")
+            val n2= VoltageNode("n2")
             val u1 = VoltageSource("u1")
             val r1 = Resistor("r1")
             val r2 = Resistor("r2")
@@ -363,8 +319,8 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
             s.addComponent(r1)
             s.addComponent(r2)
 
-            val n11 = VoltageState("n11")
-            val n12 = VoltageState("n12")
+            val n11 = VoltageNode("n11")
+            val n12 = VoltageNode("n12")
             val u11 = VoltageSource("u11")
             val r11 = Resistor("r11")
             val r12 = Resistor("r12")
@@ -412,5 +368,5 @@ class RootSystem(internal var dt: Double, private var interSystemOverSampling: I
     }
 }
 
-//TODO: garbadge collector
-//TODO: ghost suppression
+//TODO: garbadge collector - where?
+//TODO: ghost suppression - why?

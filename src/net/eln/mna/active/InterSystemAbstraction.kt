@@ -2,27 +2,26 @@ package net.eln.mna.active
 
 import net.eln.mna.RootSystem
 import net.eln.mna.SubSystem
-import net.eln.mna.active.DelayInterSystem2
 import net.eln.mna.passive.Component
 import net.eln.mna.passive.Resistor
 import net.eln.mna.misc.IAbstractor
 import net.eln.mna.misc.IDestructor
-import net.eln.mna.state.State
-import net.eln.mna.state.VoltageState
+import net.eln.mna.state.Node
+import net.eln.mna.state.VoltageNode
 
 class InterSystemAbstraction(internal var root: RootSystem, internal var interSystemResistor: Resistor) : IAbstractor,
     IDestructor {
 
-    internal var aNewState: VoltageState
+    internal var aNewState: VoltageNode
     internal var aNewResistor: Resistor
     internal var aNewDelay: DelayInterSystem2
-    internal var bNewState: VoltageState
+    internal var bNewState: VoltageNode
     internal var bNewResistor: Resistor
     internal var bNewDelay: DelayInterSystem2
     internal var thevnaCalc: DelayInterSystem2.ThevnaCalculator
 
-    internal var aState: State = interSystemResistor.aPin ?: throw Exception("aPin on InterSystemResistor cannot be null!")
-    internal var bState: State = interSystemResistor.bPin ?: throw Exception("bPin on InterSystemResistor cannot be null!")
+    internal var aState: Node = interSystemResistor.aPin ?: throw Exception("aPin on InterSystemResistor cannot be null!")
+    internal var bState: Node = interSystemResistor.bPin ?: throw Exception("bPin on InterSystemResistor cannot be null!")
     override var abstractorSubSystem: SubSystem = aState.subSystem ?: throw Exception("subsystem connected to aPin cannot be null!")
     internal var bSystem: SubSystem = bState.subSystem ?: throw Exception("subsystem connected to bPin cannot be null!")
 
@@ -30,10 +29,10 @@ class InterSystemAbstraction(internal var root: RootSystem, internal var interSy
         abstractorSubSystem.interSystemConnectivity.add(bSystem)
         bSystem.interSystemConnectivity.add(abstractorSubSystem)
 
-        aNewState = VoltageState()
+        aNewState = VoltageNode()
         aNewResistor = Resistor()
         aNewDelay = DelayInterSystem2()
-        bNewState = VoltageState()
+        bNewState = VoltageNode()
         bNewResistor = Resistor()
         bNewDelay = DelayInterSystem2()
 

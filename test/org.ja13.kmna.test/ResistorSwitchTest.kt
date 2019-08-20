@@ -3,8 +3,8 @@ package org.ja13.kmna.test
 import net.eln.mna.SubSystem
 import net.eln.mna.passive.ResistorSwitch
 import net.eln.mna.passive.VoltageSource
-import net.eln.mna.state.CurrentState
-import net.eln.mna.state.VoltageState
+import net.eln.mna.state.CurrentNode
+import net.eln.mna.state.VoltageNode
 import kotlin.math.absoluteValue
 
 class ResistorSwitchTest {
@@ -22,8 +22,8 @@ class ResistorSwitchTest {
             val rs = ResistorSwitch("Switch")
             rs.r = 1e-2
 
-            val s0 = VoltageState()
-            val s1 = VoltageState()
+            val s0 = VoltageNode()
+            val s1 = VoltageNode()
 
             vs5v.aPin = s0
             rs.aPin = s0
@@ -41,7 +41,7 @@ class ResistorSwitchTest {
                 println((1 .. 16).map {"="}.joinToString (""))
                 ss.states.forEach {
                     val un: String
-                    if (it is CurrentState) {
+                    if (it is CurrentNode) {
                         un = "A"
                     } else {
                         un = "V"
@@ -63,13 +63,13 @@ class ResistorSwitchTest {
             for (x in (0 .. 100)) {
                 // for reference, the amps passed should be around 500A. We'll check for over 450A.
                 var pass = true
-                ss.states.filterIsInstance<CurrentState>().forEach {
+                ss.states.filterIsInstance<CurrentNode>().forEach {
                     if (it.state.absoluteValue < 450.0 == state) {
                         pass = false
                         allPass = false
                     }
                 }
-                println("$state: ${ss.states.filterIsInstance<CurrentState>().map { it.state.toString() }}")
+                println("$state: ${ss.states.filterIsInstance<CurrentNode>().map { it.state.toString() }}")
                 println(rs.r)
                 state = Math.random() > 0.5
                 rs.setState(state)
@@ -77,7 +77,7 @@ class ResistorSwitchTest {
                 doStep(1)
             }
 
-            print(ss.dotGraph())
+            print(ss.exportCircuit())
 
             if (allPass) {
                 println("TEST PASS")

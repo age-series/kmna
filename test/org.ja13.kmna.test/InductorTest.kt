@@ -5,8 +5,8 @@ import net.eln.mna.passive.Inductor
 import net.eln.mna.passive.Resistor
 import net.eln.mna.passive.ResistorSwitch
 import net.eln.mna.passive.VoltageSource
-import net.eln.mna.state.CurrentState
-import net.eln.mna.state.VoltageState
+import net.eln.mna.state.CurrentNode
+import net.eln.mna.state.VoltageNode
 
 class InductorTest {
     companion object {
@@ -43,11 +43,11 @@ This is a 3x2 circuit, as follows:
 (0,1) VoltageSource 0v
 
              */
-            val s00 = VoltageState()
-            val s10 = VoltageState()
-            val s2 = VoltageState()
-            val s01 = VoltageState()
-            val s11 = VoltageState()
+            val s00 = VoltageNode()
+            val s10 = VoltageNode()
+            val s2 = VoltageNode()
+            val s01 = VoltageNode()
+            val s11 = VoltageNode()
 
             vs5v.aPin = s00
             vs0v.aPin = s10
@@ -85,7 +85,7 @@ This is a 3x2 circuit, as follows:
                 println((1 .. 16).map {"="}.joinToString (""))
                 ss.states.forEach {
                     val un: String
-                    if (it is CurrentState) {
+                    if (it is CurrentNode) {
                         un = "A"
                     } else {
                         un = "V"

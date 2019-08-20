@@ -6,7 +6,7 @@ import net.eln.mna.passive.Resistor
 class ElectricalResistorHeatThermalLoad(internal var electricalResistor: Resistor, internal var thermalLoad: ThermalLoad) :
     IProcess {
 
-    override fun process(time: Double) {
+    override fun process(dt: Double) {
         thermalLoad.PcTemp += electricalResistor.getPower()
     }
 }

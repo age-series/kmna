@@ -1,11 +1,12 @@
 package net.eln.mna.passive
 
+import net.eln.common.ISerializedComponent
 import net.eln.mna.RootSystem
 import net.eln.mna.SubSystem
 import net.eln.mna.misc.IAbstractor
-import net.eln.mna.state.State
+import net.eln.mna.state.Node
 
-abstract class Component {
+abstract class Component: ISerializedComponent {
 
     var name = ""
 
@@ -13,7 +14,7 @@ abstract class Component {
 
     var abstractedBy: IAbstractor? = null
 
-    abstract fun getConnectedStates(): Array<State?>
+    abstract fun getConnectedStates(): Array<Node?>
 
     open fun addedTo(s: SubSystem) {
         this.subSystem = s
@@ -36,7 +37,7 @@ abstract class Component {
     open fun breakConnection() {}
 
     open fun returnToRootSystem(root: RootSystem?) {
-        root!!.addComponents.add(this)
+        root!!.components.add(this)
     }
 
     fun dirty() {
@@ -57,5 +58,15 @@ abstract class Component {
 
     override fun toString(): String {
         return "(" + this.javaClass.simpleName + "_" + name + ")"
+    }
+
+    fun clean(name: String): String = name.filter {it.isLetterOrDigit()}
+
+    override fun importProperties(data: Map<String, String>, pins: List<Node?>) {
+        name = data["NAME"]?: name
+    }
+
+    override fun exportProperties(): Pair<Map<String, String>, List<Node?>> {
+        return Pair(mapOf(Pair("NAME", clean(name))), listOf())
     }
 }

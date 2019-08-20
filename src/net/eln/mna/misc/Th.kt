@@ -1,7 +1,7 @@
 package net.eln.mna.misc
 
 import net.eln.mna.passive.VoltageSource
-import net.eln.mna.state.State
+import net.eln.mna.state.Node
 import java.lang.Exception
 
 class Th {
@@ -14,7 +14,7 @@ class Th {
     companion object {
 
         @JvmStatic
-        fun getTh(d: State, voltageSource: VoltageSource): Th {
+        fun getTh(d: Node, voltageSource: VoltageSource): Th {
             if (d.subSystem != voltageSource.subSystem) {
                 throw Exception("Not in same subsystem!")
             }

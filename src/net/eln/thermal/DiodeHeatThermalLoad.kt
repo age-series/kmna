@@ -11,7 +11,7 @@ class DiodeHeatThermalLoad(internal var r: Resistor, internal var load: ThermalL
         lastR = r.r
     }
 
-    override fun process(time: Double) {
+    override fun process(dt: Double) {
         if (r.r == lastR) {
             load.movePowerTo(r.getPower())
         } else {

@@ -2,9 +2,9 @@ package net.eln.mna.active
 
 import net.eln.mna.passive.VoltageSource
 import net.eln.mna.misc.IRootSystemPreStepProcess
-import net.eln.mna.state.State
+import net.eln.mna.state.Node
 
-class TransformerInterSystemProcess(private val aState: State, private val bState: State, private val aVoltgeSource: VoltageSource, private val bVoltgeSource: VoltageSource) :
+class TransformerInterSystemProcess(private val aState: Node, private val bState: Node, private val aVoltgeSource: VoltageSource, private val bVoltgeSource: VoltageSource) :
     IRootSystemPreStepProcess {
 
     private var ratio = 1.0
@@ -47,7 +47,7 @@ class TransformerInterSystemProcess(private val aState: State, private val bStat
      * @return instance of class Th (a pair equivelant)
      */
     @Deprecated("")
-    private fun getTh(d: State, voltageSource: VoltageSource): Th {
+    private fun getTh(d: Node, voltageSource: VoltageSource): Th {
         val th = Th()
         val originalU = d.state
 

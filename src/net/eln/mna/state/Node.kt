@@ -1,6 +1,6 @@
 package net.eln.mna.state
 
-import net.eln.common.IDotNode
+import net.eln.common.ISerializedNode
 import net.eln.mna.RootSystem
 import net.eln.mna.SubSystem
 import net.eln.mna.passive.Component
@@ -9,10 +9,10 @@ import net.eln.mna.misc.MnaConst
 
 import java.util.ArrayList
 
-open class State: IDotNode {
+abstract class Node: ISerializedNode {
 
     var id = -1
-    var name = "State"
+    var name = "Node"
 
     constructor()
     constructor(name: String) {
@@ -69,12 +69,12 @@ open class State: IDotNode {
         return false
     }
 
-    fun setAsPrivate(): State {
+    fun setAsPrivate(): Node {
         isPrivateSubSystem = true
         return this
     }
 
-    fun setAsMustBeFarFromInterSystem(): State {
+    fun setAsMustBeFarFromInterSystem(): Node {
         mustBeFarFromInterSystem = true
         return this
     }
@@ -84,55 +84,81 @@ open class State: IDotNode {
     }
 
     fun returnToRootSystem(root: RootSystem) {
-        root.addStates.add(this)
+        root.nodes.add(this)
     }
 
     override fun toString(): String {
         return "(" + this.id + "," + this.javaClass.simpleName + "_" + name + ")"
     }
 
-    override fun dotNode(): String {
-        return "${this.id} [label=${this.javaClass.simpleName}_${name}_${this.id}]"
+    fun clean(name: String): String = name.filter {it.isLetterOrDigit()}
+
+    override fun exportProperties(): Map<String, String> {
+        return mapOf(Pair("NAME", clean(name)))
     }
 
-    override fun dotNodeID(): String {
-        return "${this.id}"
+    override fun importProperties(data: Map<String, String>) {
+        name = data["NAME"]?: name
     }
 }
 
-open class VoltageState : State {
+open class VoltageNode : Node {
 
-    constructor() : super()
+    override val typeString: String
+        get() = "VN"
+
+    constructor() {
+        this.name = "VoltageNode"
+    }
     constructor(name: String) : super(name)
 
     var u: Double
         get() = state
         set(state) {
             if (state.isNaN())
-                MnaConst.logger.error("state.VoltageState setU(double state) - state was NaN!")
+                MnaConst.logger.error("node.VoltageNode setU(double node) - node was NaN!")
             this.state = state
         }
 
-    override fun dotNode(): String {
-        return "${this.id} [label=${this.javaClass.simpleName}_${name}_${this.id}]"
+    override fun exportProperties(): Map<String, String> {
+        val prop = super.exportProperties().toMutableMap()
+        prop["U"] = u.toString()
+        return prop
+    }
+
+    override fun importProperties(data: Map<String, String>) {
+        this.u = data["U"]?.toDouble()?: this.u
     }
 }
 
-class CurrentState : State()
+class CurrentNode : Node() {
 
-open class VoltageStateLineReady : VoltageState() {
+    override val typeString: String
+        get() = "CN"
 
     init {
-        name = "VoltageStateLineReady"
+        this.name = "CurrentNode"
+    }
+}
+
+open class VoltageNodeLineReady : VoltageNode() {
+
+    override val typeString: String
+        get() = "VNLR"
+
+    init {
+        name = "VoltageNodeLineReady"
     }
 
-    internal var canBeSimplifiedByLine = false
+    var canBeSimplifiedByLine = false
 
-    fun setCanBeSimplifiedByLine(v: Boolean) {
-        this.canBeSimplifiedByLine = v
+    override fun exportProperties(): Map<String, String> {
+        val prop = super.exportProperties().toMutableMap()
+        prop["CBSBL"] = canBeSimplifiedByLine.toString()
+        return prop
     }
 
-    override fun canBeSimplifiedByLine(): Boolean {
-        return canBeSimplifiedByLine
+    override fun importProperties(data: Map<String, String>) {
+        canBeSimplifiedByLine = data["CBSBL"]?.toBoolean()?: canBeSimplifiedByLine
     }
 }

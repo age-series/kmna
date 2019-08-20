@@ -3,8 +3,8 @@ package org.ja13.kmna.test
 import net.eln.mna.RootSystem
 import net.eln.mna.SubSystem
 import net.eln.mna.passive.*
-import net.eln.mna.state.State
-import net.eln.mna.state.VoltageState
+import net.eln.mna.state.Node
+import net.eln.mna.state.VoltageNode
 
 class DotHandler {
     companion object {
@@ -27,7 +27,7 @@ class DotHandler {
                         println("parsing $subsystemName")
                         val subSystem = SubSystem(null, KmnaParseTester.dt)
                         val componentList = mutableListOf<Component>()
-                        val nodeList = mutableMapOf<String, State?>()
+                        val nodeList = mutableMapOf<String, Node?>()
                         nodeList["null"] = null
                         while (lineItr.hasNext()) {
                             val line = lineItr.next()
@@ -88,8 +88,8 @@ class DotHandler {
                                     break
                                 }
 
-                                val aPin: State? = nodeList[connections[0]]
-                                val bPin: State? = nodeList[connections[1]]
+                                val aPin: Node? = nodeList[connections[0]]
+                                val bPin: Node? = nodeList[connections[1]]
 
                                 component = componentBuilder(properties, aPin, bPin)
 
@@ -100,20 +100,19 @@ class DotHandler {
                             }else{
                                 // node
                                 val name = parts[0].trim()
-                                val type: State?
+                                val type: Node?
 
                                 when(properties["label"]) {
                                     "null" -> {
                                         type = null
                                     }
                                     "VoltageState" -> {
-                                        type = VoltageState(properties["name"]?: "")
+                                        type = VoltageNode(properties["name"]?: "")
                                         type.id = name.toInt()
                                         type.u = properties["volts"]?.toDouble()?: 0.0
                                     }
                                     else -> {
-                                        type = State(properties["name"]?: "")
-                                        type.id = name.toInt()
+                                        type = null
                                     }
                                 }
                                 if (type == null) {
@@ -130,7 +129,7 @@ class DotHandler {
             return rootSystem
         }
 
-        fun componentBuilder(properties: MutableMap<String, String>, aPin: State?, bPin: State?): Component? {
+        fun componentBuilder(properties: MutableMap<String, String>, aPin: Node?, bPin: Node?): Component? {
             val component: Component?
 
             // === Handles the component itself ===

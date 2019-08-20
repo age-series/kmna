@@ -1,7 +1,7 @@
 package net.eln.mna.active
 
 import net.eln.mna.passive.VoltageSource
-import net.eln.mna.state.State
+import net.eln.mna.state.Node
 
 class TheveninAbstraction {
 
@@ -14,7 +14,7 @@ class TheveninAbstraction {
      * @param voltageSource Voltage Source
      * @return TheveninData instance
      */
-    fun getTh(d: State, voltageSource: VoltageSource): TheveninData {
+    fun getTh(d: Node, voltageSource: VoltageSource): TheveninData {
         val th = TheveninData()
         val originalU = d.state
 
